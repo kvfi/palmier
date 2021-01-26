@@ -1,5 +1,8 @@
 use argon2::{self, Config, ThreadMode, Variant, Version};
 use openssl::rand::rand_bytes;
+use std::iter;
+use rand::{Rng, thread_rng};
+use rand::distributions::Alphanumeric;
 
 pub fn generate_rand_bytes(buf: &mut [u8]) {
     match rand_bytes(buf) {
@@ -28,4 +31,16 @@ pub fn hash_password(pass: &String) -> String {
     let hash = argon2::hash_encoded(&password, &salt, &config).unwrap();
 
     hash
+}
+
+
+pub(crate) fn get_rand_string(len: usize) -> String {
+    let mut rng = thread_rng();
+    let chars: String = iter::repeat(())
+        .map(|()| rng.sample(Alphanumeric))
+        .map(char::from)
+        .take(len)
+        .collect();
+
+    chars
 }

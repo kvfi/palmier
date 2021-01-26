@@ -11,7 +11,6 @@ use structopt::StructOpt;
 
 use crate::{repo, security};
 use crate::repo::KeyPair;
-use crate::security::generate_rand_bytes;
 
 #[derive(StructOpt, Debug)]
 #[structopt(
@@ -47,8 +46,7 @@ fn handle_opts(cli: Cli) {
                 let keypair: KeyPair = create_initial_key_pair();
                 s_rep.keypair = Option::from(keypair);
 
-                let mut private_file_name: [u8; 256] = [0; 256];
-                generate_rand_bytes(&mut private_file_name);
+                let private_file_name = security::get_rand_string(20);
 
                 let private_file_path: PathBuf = [&s_rep.home_dir, Path::new(&String::from(".keyvault")), Path::new(&String::from_utf8(Vec::from(private_file_name)).unwrap())].iter().collect();
                 let mut private_key_f = File::create(private_file_path).unwrap();
