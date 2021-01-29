@@ -1,6 +1,5 @@
-use std::env;
-use std::fs::{DirBuilder, File};
-use std::io::Write;
+use std::{env};
+use std::fs::{DirBuilder};
 use std::path::Path;
 use std::path::PathBuf;
 use std::str;
@@ -9,8 +8,9 @@ use openssl::rsa::Rsa;
 use openssl::symm::Cipher;
 use structopt::StructOpt;
 
-use crate::{repo, security};
-use crate::repo::KeyPair;
+use crate::{repo, io};
+use crate::repo::{SecureRepository};
+use crate::security::hash_password;
 
 #[derive(StructOpt, Debug)]
 #[structopt(
@@ -42,21 +42,7 @@ fn handle_opts(cli: Cli) {
                             .unwrap();
                     }
                 }
-
-                let keypair: KeyPair = create_initial_key_pair();
-                s_rep.keypair = Option::from(keypair);
-
-                let private_file_name = security::get_rand_string(20);
-
-                let private_file_path: PathBuf = [&s_rep.home_dir, Path::new(&String::from(".keyvault")), Path::new(&String::from_utf8(Vec::from(private_file_name)).unwrap())].iter().collect();
-                let mut private_key_f = File::create(private_file_path).unwrap();
-                private_key_f.write_all(&s_rep.keypair.unwrap().private);
-
-                println!(
-                    "Created new password repository: {}",
-                    s_rep.home_dir.display()
-                );
-                println!("{:?}", name);
+                create_key_pair(&mut s_rep);
             } else {
                 println!("Path already exists: {}", s_rep.home_dir.display());
             }
@@ -64,24 +50,24 @@ fn handle_opts(cli: Cli) {
     }
 }
 
-fn create_initial_key_pair() -> repo::KeyPair {
+fn create_key_pair(s_repo: &mut SecureRepository) {
     let mut passphrase = String::new();
     get_input(&mut passphrase, &String::from("Please enter a passphrase to use. It will help generate a keypair:"));
-    println!("Chosen passphrase: {}", passphrase);
-    println!("Test: {}", security::hash_password(&passphrase));
 
     let rsa = Rsa::generate(1024).unwrap();
     let private_key: Vec<u8> = rsa
-        .private_key_to_pem_passphrase(Cipher::aes_128_cbc(), passphrase.as_bytes())
-        .unwrap();
+        .private_key_to_pem_passphrase(Cipher::aes_128_cbc(), hash_password(&passphrase).as_ref()).unwrap();
     let public_key: Vec<u8> = rsa.public_key_to_pem().unwrap();
 
-    let keypair = repo::KeyPair {
+    s_repo.keypair = Option::from(repo::KeyPair {
         public: public_key,
         private: private_key,
-    };
+    });
 
-    keypair
+    match io::write_keypair_fs(&s_repo) {
+        Ok(..) => (),
+        _ => ()
+    }
 }
 
 pub fn parse_opts() {
