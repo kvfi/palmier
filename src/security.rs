@@ -1,8 +1,34 @@
+use std::{iter, fmt};
+use std::str::FromStr;
+
 use argon2::{self, Config, ThreadMode, Variant, Version};
 use openssl::rand::rand_bytes;
-use std::iter;
 use rand::{Rng, thread_rng};
 use rand::distributions::Alphanumeric;
+
+#[derive(Debug)]
+pub(crate) enum StashType {
+    TEXT,
+    FILE,
+}
+
+impl fmt::Display for StashType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl FromStr for StashType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "TEXT" => Ok(StashType::TEXT),
+            "FILE" => Ok(StashType::FILE),
+            _ => Err(())
+        }
+    }
+}
 
 pub fn generate_rand_bytes(buf: &mut [u8]) {
     match rand_bytes(buf) {

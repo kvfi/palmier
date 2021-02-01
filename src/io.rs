@@ -14,6 +14,12 @@ macro_rules! build_from_paths {
     }}
 }
 
+pub(crate) fn get_input(input: &mut String, message: &String) {
+    println!("{}", &message);
+    std::io::stdin().read_line(input).expect("Failed");
+}
+
+
 pub(crate) fn write_keypair_fs(s_repo: &SecureRepository) -> std::io::Result<()> {
     let keypair = s_repo.keypair.as_ref();
     let private_file_name = security::get_rand_string(20);

@@ -1,16 +1,13 @@
-use std::{env};
-use std::fs::{DirBuilder};
-use std::path::Path;
-use std::path::PathBuf;
+use std::env;
+use std::fs::DirBuilder;
+use std::path::{Path, PathBuf};
 use std::str;
 
-use openssl::rsa::Rsa;
-use openssl::symm::Cipher;
 use structopt::StructOpt;
 
-use crate::{repo, io};
-use crate::repo::{SecureRepository};
-use crate::security::hash_password;
+use crate::{crypto, repo, server};
+use crate::security::StashType;
+use std::str::FromStr;
 
 #[derive(StructOpt, Debug)]
 #[structopt(
@@ -20,6 +17,13 @@ about = "Palmier is a secure in-memory, to-disk password storage server with a m
 enum Cli {
     #[structopt(name = "create", about = "create new crypto repo")]
     Create { name: String },
+    #[structopt(name = "stash", about = "start Palmier HTTP server")]
+    Stash {
+        #[structopt(short = "v", long = "value", default_value = "password")]
+        value: String
+    },
+    #[structopt(name = "server", about = "start Palmier HTTP server")]
+    Server,
 }
 
 fn handle_opts(cli: Cli) {
@@ -42,40 +46,21 @@ fn handle_opts(cli: Cli) {
                             .unwrap();
                     }
                 }
-                create_key_pair(&mut s_rep);
+                crypto::create_key_pair(&mut s_rep);
             } else {
                 println!("Path already exists: {}", s_rep.home_dir.display());
             }
         }
-    }
-}
-
-fn create_key_pair(s_repo: &mut SecureRepository) {
-    let mut passphrase = String::new();
-    get_input(&mut passphrase, &String::from("Please enter a passphrase to use. It will help generate a keypair:"));
-
-    let rsa = Rsa::generate(1024).unwrap();
-    let private_key: Vec<u8> = rsa
-        .private_key_to_pem_passphrase(Cipher::aes_128_cbc(), hash_password(&passphrase).as_ref()).unwrap();
-    let public_key: Vec<u8> = rsa.public_key_to_pem().unwrap();
-
-    s_repo.keypair = Option::from(repo::KeyPair {
-        public: public_key,
-        private: private_key,
-    });
-
-    match io::write_keypair_fs(&s_repo) {
-        Ok(..) => (),
-        _ => ()
+        Cli::Stash { value } => {
+            println!("{}", StashType::from_str(&*value).unwrap());
+        }
+        Cli::Server => {
+            server::spin_server();
+        }
     }
 }
 
 pub fn parse_opts() {
     let cli = Cli::from_args();
     handle_opts(cli);
-}
-
-fn get_input(input: &mut String, message: &String) {
-    println!("{}", &message);
-    std::io::stdin().read_line(input).expect("Failed");
 }
